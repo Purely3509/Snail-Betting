@@ -1,0 +1,1007 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Snail Betting</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --red: #e74c3c;
+  --blue: #3498db;
+  --green: #2ecc71;
+  --yellow: #f1c40f;
+  --purple: #9b59b6;
+  --orange: #e67e22;
+  --bg: #1a1a2e;
+  --panel: #16213e;
+  --text: #eee;
+  --accent: #0f3460;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100dvh;
+  overflow-x: hidden;
+  -webkit-tap-highlight-color: transparent;
+}
+
+#setup-screen, #game-screen, #gameover-screen {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px;
+  max-width: 500px;
+  margin: 0 auto;
+}
+#setup-screen.active, #game-screen.active, #gameover-screen.active {
+  display: flex;
+}
+
+h1 { font-size: 1.6rem; margin-bottom: 10px; }
+
+.setup-section {
+  background: var(--panel);
+  border-radius: 12px;
+  padding: 20px;
+  width: 100%;
+  margin-bottom: 16px;
+}
+.setup-section label { display: block; margin-bottom: 8px; font-weight: 600; }
+
+.player-count-btns {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.player-count-btns button {
+  flex: 1;
+  padding: 12px;
+  font-size: 1.1rem;
+  border: 2px solid var(--accent);
+  background: var(--bg);
+  color: var(--text);
+  border-radius: 8px;
+  cursor: pointer;
+  min-height: 44px;
+}
+.player-count-btns button.selected {
+  background: var(--accent);
+  border-color: #3a86ff;
+}
+
+.name-inputs { display: flex; flex-direction: column; gap: 8px; }
+.name-inputs input {
+  padding: 10px 14px;
+  font-size: 1rem;
+  border: 1px solid #333;
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 44px;
+}
+
+.btn-primary {
+  width: 100%;
+  padding: 14px;
+  font-size: 1.1rem;
+  font-weight: 700;
+  border: none;
+  border-radius: 10px;
+  background: #3a86ff;
+  color: #fff;
+  cursor: pointer;
+  min-height: 48px;
+  margin-top: 8px;
+}
+.btn-primary:active { background: #2563eb; }
+
+#game-screen { padding: 10px; max-width: 600px; }
+
+.game-header {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: var(--panel);
+  border-radius: 10px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.game-header .title { font-weight: 700; font-size: 1rem; }
+.game-header .info { font-size: 0.85rem; opacity: 0.85; }
+
+.track-container {
+  width: 100%;
+  background: var(--panel);
+  border-radius: 10px;
+  padding: 10px;
+  margin-bottom: 8px;
+  overflow-x: auto;
+}
+
+.track {
+  display: grid;
+  grid-template-columns: 30px repeat(12, 1fr) 30px;
+  grid-template-rows: repeat(6, 36px);
+  gap: 2px;
+  min-width: 320px;
+}
+
+.lane-label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.75rem;
+  border-radius: 4px;
+}
+
+.track-cell {
+  background: rgba(255,255,255,0.04);
+  border-radius: 3px;
+  position: relative;
+}
+
+.finish-cell {
+  background: rgba(255,255,255,0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.6rem;
+  font-weight: 700;
+  color: rgba(255,255,255,0.4);
+}
+
+.snail {
+  position: absolute;
+  inset: 2px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 2;
+}
+
+.dice-display {
+  width: 100%;
+  background: var(--panel);
+  border-radius: 10px;
+  padding: 10px 14px;
+  margin-bottom: 8px;
+  text-align: center;
+  min-height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  font-size: 0.95rem;
+}
+
+.die {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+}
+
+.die.rolling {
+  animation: diceRoll 0.1s infinite;
+}
+
+@keyframes diceRoll {
+  0% { transform: rotate(0deg) scale(1); }
+  25% { transform: rotate(10deg) scale(1.05); }
+  50% { transform: rotate(-5deg) scale(0.95); }
+  75% { transform: rotate(8deg) scale(1.02); }
+  100% { transform: rotate(0deg) scale(1); }
+}
+
+.betting-panel {
+  width: 100%;
+  background: var(--panel);
+  border-radius: 10px;
+  padding: 12px;
+  margin-bottom: 8px;
+}
+
+.multiplier-badge {
+  text-align: center;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #f1c40f;
+  margin-bottom: 8px;
+}
+
+.snail-picker {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+
+.snail-pick-btn {
+  width: 48px;
+  height: 44px;
+  border: 3px solid transparent;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 1.1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-weight: 700;
+}
+.snail-pick-btn.selected {
+  border-color: #fff;
+  box-shadow: 0 0 10px rgba(255,255,255,0.4);
+}
+
+.wager-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.wager-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  border: 1px solid #555;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 1.3rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.wager-amount {
+  font-size: 1.3rem;
+  font-weight: 700;
+  min-width: 60px;
+  text-align: center;
+}
+
+.action-btns {
+  display: flex;
+  gap: 8px;
+}
+.action-btns button {
+  flex: 1;
+  padding: 12px;
+  border: none;
+  border-radius: 10px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+  min-height: 48px;
+}
+
+.btn-bet { background: #2ecc71; color: #fff; }
+.btn-bet:disabled { background: #555; opacity: 0.6; }
+.btn-skip { background: #555; color: #fff; }
+
+.info-panel {
+  width: 100%;
+  background: var(--panel);
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  font-size: 0.85rem;
+}
+.info-panel .section-label {
+  font-weight: 700;
+  margin-bottom: 4px;
+  font-size: 0.8rem;
+  opacity: 0.7;
+  text-transform: uppercase;
+}
+.bets-list { margin-bottom: 8px; }
+.bet-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 6px;
+  margin: 2px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #fff;
+}
+.bet-odds {
+  opacity: 0.85;
+  font-size: 0.75rem;
+  font-weight: 400;
+}
+.standings-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 2px 0;
+}
+.standings-row.current { font-weight: 700; }
+
+#gameover-screen {
+  text-align: center;
+  padding-top: 40px;
+}
+.podium { width: 100%; margin: 20px 0; }
+.podium-entry {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background: var(--panel);
+  border-radius: 10px;
+  margin-bottom: 8px;
+  font-size: 1.05rem;
+}
+.podium-entry:first-child {
+  background: linear-gradient(135deg, #f1c40f33, #f39c1233);
+  border: 1px solid #f1c40f;
+}
+.podium-rank { font-weight: 700; margin-right: 10px; }
+.podium-coins { font-weight: 700; color: #f1c40f; }
+
+.winner-snail {
+  font-size: 1rem;
+  margin: 10px 0;
+  padding: 10px 16px;
+  background: var(--panel);
+  border-radius: 10px;
+}
+
+.high-score-msg {
+  color: #f1c40f;
+  font-weight: 700;
+  margin-top: 10px;
+  font-size: 1.05rem;
+}
+</style>
+</head>
+<body>
+
+<!-- SETUP SCREEN -->
+<div id="setup-screen" class="active">
+  <h1>Snail Betting</h1>
+  <div class="setup-section">
+    <label>Number of Players</label>
+    <div class="player-count-btns" id="player-count-btns">
+      <button data-count="1">1</button>
+      <button data-count="2" class="selected">2</button>
+      <button data-count="3">3</button>
+      <button data-count="4">4</button>
+    </div>
+    <label>Player Names</label>
+    <div class="name-inputs" id="name-inputs">
+      <input type="text" placeholder="Player 1" maxlength="12">
+      <input type="text" placeholder="Player 2" maxlength="12">
+    </div>
+  </div>
+  <button class="btn-primary" id="start-btn">Start Race!</button>
+</div>
+
+<!-- GAME SCREEN -->
+<div id="game-screen">
+  <div class="game-header">
+    <span class="title">Snail Betting</span>
+    <span class="info" id="round-info">Round: 1</span>
+    <span class="info" id="player-info">Player: — (100 coins)</span>
+  </div>
+
+  <div class="track-container">
+    <div class="track" id="track"></div>
+  </div>
+
+  <div class="dice-display" id="dice-display">
+    <span style="opacity:0.5">Roll dice to start!</span>
+  </div>
+
+  <div class="betting-panel" id="betting-panel">
+    <div class="multiplier-badge" id="multiplier-badge">BET — 5x payout!</div>
+    <div class="snail-picker" id="snail-picker"></div>
+    <div class="wager-row">
+      <button class="wager-btn" id="wager-down">&minus;</button>
+      <span class="wager-amount" id="wager-amount">10</span>
+      <button class="wager-btn" id="wager-up">+</button>
+    </div>
+    <div class="action-btns">
+      <button class="btn-bet" id="btn-bet">Place Bet</button>
+      <button class="btn-skip" id="btn-skip">Skip &amp; Roll</button>
+    </div>
+  </div>
+
+  <div class="info-panel" id="info-panel">
+    <div class="section-label">Your Bets</div>
+    <div class="bets-list" id="bets-list">None yet</div>
+    <div class="section-label">Standings</div>
+    <div id="standings"></div>
+  </div>
+</div>
+
+<!-- GAME OVER SCREEN -->
+<div id="gameover-screen">
+  <h1>Race Over!</h1>
+  <div class="winner-snail" id="winner-snail"></div>
+  <div class="podium" id="podium"></div>
+  <div class="high-score-msg" id="high-score-msg"></div>
+  <button class="btn-primary" id="play-again-btn">Play Again</button>
+</div>
+
+<script>
+// ═══════════════════════════════════
+//  SNAIL BETTING — GAME ENGINE
+// ═══════════════════════════════════
+
+const SNAILS = [
+  { color: 'red',    label: 'R', css: '#e74c3c' },
+  { color: 'blue',   label: 'B', css: '#3498db' },
+  { color: 'green',  label: 'G', css: '#2ecc71' },
+  { color: 'yellow', label: 'Y', css: '#f1c40f' },
+  { color: 'purple', label: 'P', css: '#9b59b6' },
+  { color: 'orange', label: 'O', css: '#e67e22' },
+];
+
+const TRACK_LENGTH = 12;
+const STARTING_COINS = 100;
+const MIN_WAGER = 10;
+const WAGER_STEP = 10;
+
+// Helper to safely escape text for display
+function escapeHTML(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.textContent;
+}
+
+// Helper to create a text element
+function createTextEl(tag, text, className) {
+  const el = document.createElement(tag);
+  el.textContent = text;
+  if (className) el.className = className;
+  return el;
+}
+
+let state = null;
+let selectedSnail = null;
+let wager = MIN_WAGER;
+let animating = false;
+
+// ── State management ──
+
+function initGame(playerNames) {
+  state = {
+    players: playerNames.map(function(name) {
+      return { name: name, coins: STARTING_COINS, bets: [] };
+    }),
+    snails: SNAILS.map(function(s) {
+      return { color: s.color, label: s.label, css: s.css, position: 0 };
+    }),
+    currentPlayerIndex: 0,
+    round: 1,
+    gameOver: false,
+    lastRoll: null,
+    turnPhase: 'bet',
+  };
+  selectedSnail = null;
+  wager = MIN_WAGER;
+}
+
+function getLeadingPosition() {
+  return Math.max.apply(null, state.snails.map(function(s) { return s.position; }));
+}
+
+function calculateMultiplier() {
+  var lead = getLeadingPosition();
+  if (lead <= 3) return 5;
+  if (lead <= 6) return 3;
+  if (lead <= 9) return 2;
+  return 1.5;
+}
+
+function rollDice() {
+  var d1 = Math.floor(Math.random() * 6);
+  var d2 = Math.floor(Math.random() * 6);
+  return [d1, d2];
+}
+
+function moveSnails(dieIndices) {
+  var moves = {};
+  dieIndices.forEach(function(idx) {
+    moves[idx] = (moves[idx] || 0) + 1;
+  });
+  Object.keys(moves).forEach(function(idx) {
+    state.snails[idx].position = Math.min(state.snails[idx].position + moves[idx], TRACK_LENGTH);
+  });
+}
+
+function checkWin() {
+  var finished = state.snails.filter(function(s) { return s.position >= TRACK_LENGTH; });
+  if (finished.length === 0) return null;
+  finished.sort(function(a, b) {
+    if (b.position !== a.position) return b.position - a.position;
+    return SNAILS.findIndex(function(s) { return s.color === a.color; })
+         - SNAILS.findIndex(function(s) { return s.color === b.color; });
+  });
+  return finished[0];
+}
+
+function placeBet(playerIndex, snailColor, amount) {
+  var player = state.players[playerIndex];
+  if (amount < MIN_WAGER || amount > player.coins) return false;
+  var multiplier = calculateMultiplier();
+  player.coins -= amount;
+  player.bets.push({ snailColor: snailColor, amount: amount, multiplier: multiplier });
+  return true;
+}
+
+function resolveBets(winningColor) {
+  state.players.forEach(function(player) {
+    player.bets.forEach(function(bet) {
+      if (bet.snailColor === winningColor) {
+        player.coins += Math.floor(bet.amount * bet.multiplier);
+      }
+    });
+  });
+}
+
+// ── Monte Carlo win probability simulation ──
+
+var SIM_RUNS = 1000;
+
+function simulateWinProbabilities() {
+  var positions = state.snails.map(function(s) { return s.position; });
+  var wins = [0, 0, 0, 0, 0, 0];
+
+  for (var r = 0; r < SIM_RUNS; r++) {
+    // Copy positions
+    var simPos = positions.slice();
+    // Simulate until someone finishes
+    var maxIter = 100;
+    while (maxIter-- > 0) {
+      var d1 = Math.floor(Math.random() * 6);
+      var d2 = Math.floor(Math.random() * 6);
+      simPos[d1] = Math.min(simPos[d1] + 1, TRACK_LENGTH);
+      simPos[d2] = Math.min(simPos[d2] + 1, TRACK_LENGTH);
+
+      // Check for any finisher
+      var best = -1;
+      var bestPos = -1;
+      for (var i = 0; i < 6; i++) {
+        if (simPos[i] >= TRACK_LENGTH && simPos[i] > bestPos) {
+          bestPos = simPos[i];
+          best = i;
+        } else if (simPos[i] >= TRACK_LENGTH && simPos[i] === bestPos && (best === -1 || i < best)) {
+          best = i;
+        }
+      }
+      if (best !== -1) {
+        wins[best]++;
+        break;
+      }
+    }
+  }
+
+  // Convert to percentages keyed by color
+  var probs = {};
+  for (var j = 0; j < 6; j++) {
+    probs[SNAILS[j].color] = Math.round((wins[j] / SIM_RUNS) * 100);
+  }
+  return probs;
+}
+
+function nextTurn() {
+  state.currentPlayerIndex = (state.currentPlayerIndex + 1) % state.players.length;
+  if (state.currentPlayerIndex === 0) state.round++;
+  state.turnPhase = 'bet';
+  selectedSnail = null;
+  wager = MIN_WAGER;
+  // Clamp wager to current player's coins
+  var maxCoins = state.players[state.currentPlayerIndex].coins;
+  if (wager > maxCoins) wager = Math.max(0, maxCoins);
+}
+
+// ── Rendering (DOM-safe, no innerHTML with user data) ──
+
+function showScreen(id) {
+  ['setup-screen', 'game-screen', 'gameover-screen'].forEach(function(sid) {
+    document.getElementById(sid).classList.remove('active');
+  });
+  document.getElementById(id).classList.add('active');
+}
+
+function buildTrack() {
+  var track = document.getElementById('track');
+  track.textContent = '';
+  for (var row = 0; row < 6; row++) {
+    var label = document.createElement('div');
+    label.className = 'lane-label';
+    label.style.background = SNAILS[row].css;
+    label.textContent = SNAILS[row].label;
+    track.appendChild(label);
+
+    for (var col = 0; col < 12; col++) {
+      var cell = document.createElement('div');
+      cell.className = 'track-cell';
+      cell.dataset.row = row;
+      cell.dataset.col = col;
+      track.appendChild(cell);
+    }
+
+    var finish = document.createElement('div');
+    finish.className = 'finish-cell';
+    finish.textContent = '\u{1F3C1}';
+    track.appendChild(finish);
+  }
+}
+
+function renderSnails() {
+  document.querySelectorAll('.snail').forEach(function(el) { el.remove(); });
+
+  for (var i = 0; i < 6; i++) {
+    var snail = state.snails[i];
+    var pos = snail.position;
+    var cell;
+
+    if (pos >= TRACK_LENGTH) {
+      cell = document.querySelectorAll('.finish-cell')[i];
+    } else {
+      cell = document.querySelector('.track-cell[data-row="' + i + '"][data-col="' + pos + '"]');
+    }
+    if (!cell) continue;
+
+    var el = document.createElement('div');
+    el.className = 'snail';
+    el.style.background = snail.css;
+    el.textContent = '\u{1F40C}';
+    cell.appendChild(el);
+  }
+}
+
+function renderHeader() {
+  var p = state.players[state.currentPlayerIndex];
+  document.getElementById('round-info').textContent = 'Round: ' + state.round;
+  document.getElementById('player-info').textContent = escapeHTML(p.name) + ' (' + p.coins + ' coins)';
+}
+
+function renderMultiplier() {
+  var m = calculateMultiplier();
+  document.getElementById('multiplier-badge').textContent = 'BET \u2014 ' + m + 'x payout!';
+}
+
+function renderBettingPanel() {
+  var panel = document.getElementById('betting-panel');
+  var player = state.players[state.currentPlayerIndex];
+
+  if (state.turnPhase === 'bet') {
+    panel.style.display = '';
+    renderMultiplier();
+    renderSnailPicker();
+    document.getElementById('wager-amount').textContent = wager;
+    var betBtn = document.getElementById('btn-bet');
+    betBtn.disabled = !selectedSnail || wager > player.coins || wager < MIN_WAGER;
+  } else {
+    panel.style.display = 'none';
+  }
+}
+
+function renderSnailPicker() {
+  var picker = document.getElementById('snail-picker');
+  picker.textContent = '';
+  SNAILS.forEach(function(s) {
+    var btn = document.createElement('button');
+    btn.className = 'snail-pick-btn' + (selectedSnail === s.color ? ' selected' : '');
+    btn.style.background = s.css;
+    btn.textContent = '\u{1F40C}';
+    btn.addEventListener('click', function() {
+      selectedSnail = s.color;
+      renderBettingPanel();
+    });
+    picker.appendChild(btn);
+  });
+}
+
+function renderInfoPanel() {
+  var player = state.players[state.currentPlayerIndex];
+  var betsList = document.getElementById('bets-list');
+  betsList.textContent = '';
+
+  if (player.bets.length === 0) {
+    betsList.textContent = 'None yet';
+  } else {
+    var probs = simulateWinProbabilities();
+    player.bets.forEach(function(b) {
+      var s = SNAILS.find(function(sn) { return sn.color === b.snailColor; });
+      var tag = document.createElement('span');
+      tag.className = 'bet-tag';
+      tag.style.background = s.css;
+
+      tag.appendChild(document.createTextNode(s.label + ' ' + b.amount + '@' + b.multiplier + 'x'));
+
+      var oddsSpan = document.createElement('span');
+      oddsSpan.className = 'bet-odds';
+      oddsSpan.textContent = '(' + probs[b.snailColor] + '%)';
+      tag.appendChild(oddsSpan);
+
+      betsList.appendChild(tag);
+    });
+  }
+
+  var standings = document.getElementById('standings');
+  standings.textContent = '';
+  state.players.forEach(function(p, i) {
+    var row = document.createElement('div');
+    row.className = 'standings-row' + (i === state.currentPlayerIndex ? ' current' : '');
+
+    var nameSpan = document.createElement('span');
+    nameSpan.textContent = escapeHTML(p.name);
+    row.appendChild(nameSpan);
+
+    var coinsSpan = document.createElement('span');
+    coinsSpan.textContent = p.coins + ' coins';
+    row.appendChild(coinsSpan);
+
+    standings.appendChild(row);
+  });
+}
+
+function renderDice(dieIndices) {
+  var display = document.getElementById('dice-display');
+  display.textContent = '';
+
+  if (!dieIndices) {
+    var hint = document.createElement('span');
+    hint.style.opacity = '0.5';
+    hint.textContent = 'Roll dice to start!';
+    display.appendChild(hint);
+    return;
+  }
+
+  dieIndices.forEach(function(idx, i) {
+    if (i > 0) {
+      var plus = document.createElement('span');
+      plus.textContent = '+';
+      display.appendChild(plus);
+    }
+    var die = document.createElement('div');
+    die.className = 'die';
+    die.style.background = SNAILS[idx].css;
+    die.textContent = SNAILS[idx].label;
+    display.appendChild(die);
+  });
+
+  if (dieIndices[0] === dieIndices[1]) {
+    var dbl = document.createElement('span');
+    dbl.style.color = '#f1c40f';
+    dbl.style.fontWeight = '700';
+    dbl.textContent = ' Double!';
+    display.appendChild(dbl);
+  }
+}
+
+function renderAll() {
+  renderHeader();
+  renderSnails();
+  renderBettingPanel();
+  renderInfoPanel();
+}
+
+// ── Dice animation ──
+
+function animateDiceRoll(callback) {
+  animating = true;
+  var display = document.getElementById('dice-display');
+  var ticks = 0;
+  var maxTicks = 12;
+
+  var interval = setInterval(function() {
+    var r1 = Math.floor(Math.random() * 6);
+    var r2 = Math.floor(Math.random() * 6);
+
+    display.textContent = '';
+    [r1, r2].forEach(function(idx, i) {
+      if (i > 0) {
+        var plus = document.createElement('span');
+        plus.textContent = '+';
+        display.appendChild(plus);
+      }
+      var die = document.createElement('div');
+      die.className = 'die rolling';
+      die.style.background = SNAILS[idx].css;
+      die.textContent = SNAILS[idx].label;
+      display.appendChild(die);
+    });
+
+    ticks++;
+    if (ticks >= maxTicks) {
+      clearInterval(interval);
+      animating = false;
+      callback();
+    }
+  }, 80);
+}
+
+// ── Actions ──
+
+function doPlaceBet() {
+  if (animating || !selectedSnail) return;
+  var ok = placeBet(state.currentPlayerIndex, selectedSnail, wager);
+  if (!ok) return;
+  state.turnPhase = 'rolling';
+  renderAll();
+  doRoll();
+}
+
+function doSkipAndRoll() {
+  if (animating) return;
+  state.turnPhase = 'rolling';
+  renderBettingPanel();
+  doRoll();
+}
+
+function doRoll() {
+  var dice = rollDice();
+  animateDiceRoll(function() {
+    renderDice(dice);
+    moveSnails(dice);
+    state.lastRoll = dice;
+    renderSnails();
+
+    setTimeout(function() {
+      var winner = checkWin();
+      if (winner) {
+        state.gameOver = true;
+        resolveBets(winner.color);
+        showGameOver(winner);
+      } else {
+        nextTurn();
+        renderAll();
+      }
+    }, 600);
+  });
+}
+
+// ── Game Over ──
+
+function capitalize(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+
+function showGameOver(winnerSnail) {
+  showScreen('gameover-screen');
+
+  var ws = document.getElementById('winner-snail');
+  ws.textContent = '';
+  ws.appendChild(document.createTextNode('\u{1F40C} '));
+  var colorSpan = document.createElement('span');
+  colorSpan.style.color = winnerSnail.css;
+  colorSpan.style.fontWeight = '700';
+  colorSpan.textContent = capitalize(winnerSnail.color);
+  ws.appendChild(colorSpan);
+  ws.appendChild(document.createTextNode(' snail wins the race!'));
+
+  var sorted = state.players.slice().sort(function(a, b) { return b.coins - a.coins; });
+  var podium = document.getElementById('podium');
+  podium.textContent = '';
+
+  var ranks = ['\u{1F947}', '\u{1F948}', '\u{1F949}'];
+  sorted.forEach(function(p, i) {
+    var entry = document.createElement('div');
+    entry.className = 'podium-entry';
+    if (i === 0) {
+      entry.style.background = 'linear-gradient(135deg, #f1c40f33, #f39c1233)';
+      entry.style.border = '1px solid #f1c40f';
+    }
+
+    var left = document.createElement('span');
+    var rankSpan = document.createElement('span');
+    rankSpan.className = 'podium-rank';
+    rankSpan.textContent = i < 3 ? ranks[i] : '#' + (i + 1);
+    left.appendChild(rankSpan);
+    left.appendChild(document.createTextNode(' ' + escapeHTML(p.name)));
+    entry.appendChild(left);
+
+    var coins = document.createElement('span');
+    coins.className = 'podium-coins';
+    coins.textContent = p.coins + ' coins';
+    entry.appendChild(coins);
+
+    podium.appendChild(entry);
+  });
+
+  var hsMsg = document.getElementById('high-score-msg');
+  hsMsg.textContent = '';
+  if (state.players.length === 1) {
+    var score = state.players[0].coins;
+    var prev = localStorage.getItem('snailBettingHighScore');
+    var highScore = prev ? parseInt(prev, 10) : 0;
+    if (score > highScore) {
+      localStorage.setItem('snailBettingHighScore', String(score));
+      hsMsg.textContent = 'New High Score: ' + score + ' coins!';
+    } else {
+      hsMsg.textContent = 'Personal Best: ' + highScore + ' coins';
+    }
+  }
+}
+
+// ── Setup Screen Logic ──
+
+var playerCount = 2;
+
+document.querySelectorAll('#player-count-btns button').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    playerCount = parseInt(btn.dataset.count, 10);
+    document.querySelectorAll('#player-count-btns button').forEach(function(b) {
+      b.classList.remove('selected');
+    });
+    btn.classList.add('selected');
+    updateNameInputs();
+  });
+});
+
+function updateNameInputs() {
+  var container = document.getElementById('name-inputs');
+  container.textContent = '';
+  for (var i = 0; i < playerCount; i++) {
+    var input = document.createElement('input');
+    input.type = 'text';
+    input.placeholder = 'Player ' + (i + 1);
+    input.maxLength = 12;
+    container.appendChild(input);
+  }
+}
+
+document.getElementById('start-btn').addEventListener('click', function() {
+  var inputs = document.querySelectorAll('#name-inputs input');
+  var names = Array.from(inputs).map(function(inp, i) {
+    return inp.value.trim() || ('Player ' + (i + 1));
+  });
+  initGame(names);
+  buildTrack();
+  showScreen('game-screen');
+  renderAll();
+});
+
+document.getElementById('play-again-btn').addEventListener('click', function() {
+  showScreen('setup-screen');
+});
+
+// ── Wager controls ──
+
+document.getElementById('wager-down').addEventListener('click', function() {
+  if (wager > MIN_WAGER) {
+    wager -= WAGER_STEP;
+    renderBettingPanel();
+  }
+});
+
+document.getElementById('wager-up').addEventListener('click', function() {
+  var maxCoins = state.players[state.currentPlayerIndex].coins;
+  if (wager + WAGER_STEP <= maxCoins) {
+    wager += WAGER_STEP;
+    renderBettingPanel();
+  }
+});
+
+document.getElementById('btn-bet').addEventListener('click', doPlaceBet);
+document.getElementById('btn-skip').addEventListener('click', doSkipAndRoll);
+
+</script>
+</body>
+</html>
